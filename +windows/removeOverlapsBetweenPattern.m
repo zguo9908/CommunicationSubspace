@@ -1,4 +1,5 @@
-function nonOverlappingpattern = removeOverlapBetweenPattern(windowsToPreserve, windowsToRemove)
+function nonOverlappingpattern = removeOverlapBetweenPattern...
+                                  (windowsToPreserve, windowsToRemove)
     %
     % This function removes windows from windowsToRemove that overalp windows
     % in windowsToPreserve. This in essence, can remove theta control windows

@@ -1,13 +1,9 @@
-function [timeAxis, times_spiking, spikeCountMatrix, spikeRateMatrix, areaPerNeuron] = getSpikeTrain(filename, timebinSize, samplingRate)
+function [timeAxis, times_spiking, spikeCountMatrix, spikeRateMatrix, areaPerNeuron] = getSpikeTrain(animal, timebinSize, samplingRate)
     %GETSPIKES Summary of this function goes here
     %
     % Input
     % -----
-    % animal : string
-    %   Name of the animal
-    %
-    % session : number
-    %   Number of the session (day)
+    % animal: name of the animal
     %
     % timebinSize : float
     %   Size of time bins in seconds for spikeCountMatrix and
@@ -42,7 +38,7 @@ function [timeAxis, times_spiking, spikeCountMatrix, spikeRateMatrix, areaPerNeu
 %     filename = "JS15spikes01.mat";
 %     timebinSize = 0.1;
     
-    load(filename);
+    load(animal + "spikes01.mat");
     % % In this case using for-looping integers is easier than raw forlooping the
     % % underlying structures. Easier than forlooping the underlying structures
     session = 1;
@@ -50,8 +46,8 @@ function [timeAxis, times_spiking, spikeCountMatrix, spikeRateMatrix, areaPerNeu
     %------------------------------------------------------------------
     % to be implemented: 
     % given an animal get to the directory and get the spikes structure
-    animal = append(extractBetween(filename, 1, 4),"cellinfo.mat");
-    load (animal);
+%     animal = append(extractBetween(filename, 1, 4),"cellinfo.mat");
+    load (animal + "cellinfo.mat");
     
     %------------------------------------------------------------------
     

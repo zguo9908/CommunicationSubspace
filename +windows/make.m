@@ -61,6 +61,10 @@ for i = 1:length(cutoff)
     switches = (switches == 1);
     temp = find(switches);
     temp = (switches == 1);
+    if iscolumn(times)
+        times = times';
+    end
+    
     R = times(temp)';
     
     if isscalar(winSize)

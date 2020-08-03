@@ -1,31 +1,15 @@
 clear
 %% Paths
 addpath(genpath(pwd)) % all folders in utils added, including semedo code
-
-
-if ~exist('animal','var')
-    animal = "ZT2";
-end
-addpath(genpath(pwd)) % all folders in utils added, including semedo code
-
-% Whose computer are we running?
-if ispc
-    paths = " C:\Users\BrainMaker\commsubspace\SingleDayExpt";
-elseif ismac
-    paths(1) = "/Volumes/sharespace-commsub/data";
-    paths(2) = "~/Data/commsubspace";
-end
-% Set data paths for that computer
-arrayfun(@(path) addpath(genpath(path)), paths);
-% % ---------- Add paths for specific users ------------------------------
-% addpath(genpath(datadef(user))); % this line throws an error for pc
-%
-% addpath(...
-%     fullfile(codedefine,"Shared"));
-% addpath(genpath(...
-%     fullfile(codedefine, "Shared", "utils")...
-%     ));
-% % -----------------------------------------------------------------------
+% ---------- Add paths for specific users ------------------------------
+addpath(genpath(datadef(user)));
+addpath(...
+    fullfile(codedefine,"Shared")
+    );
+addpath(genpath(...
+    fullfile(codedefine, "Shared", "utils")...
+    ));
+% -----------------------------------------------------------------------
 %% Script parameters
 % -----------------------------------------------------------------
 Option = struct();
@@ -34,7 +18,7 @@ Option.generateFromRipTimes = true; % Whether to replace H(:, ripple) as
 % determined by spectral power with
 % pattern determined by global ripple
 % rimes.
-Option.animal    = animal;
+Option.animal    = "JS21";
 Option.generateH = "fromSpectral_fromRipTimes";
 %Option.generateH = "fromSpectra_fromRipTimes";
 % This option field have these possibilities:
@@ -50,7 +34,7 @@ Option.winSize       = 0.3;              % size of the window
 Option.sourceArea    = "CA1";
 Option.equalWindowsAcrossPatterns = false;    % whether all three patterns have the same #windows
 Option.singleControl = true;                 % whether to use just one control column
-Option.numPartition = 10;                    % ways to split source and target
+
 usingSingleprediction = true;
 %% Shortcut/alias variables to improve readability
 THETA = 1;
@@ -85,7 +69,7 @@ if contains(Option.generateH, "fromSpectral")
 elseif contains(Option.generateH, "fromFilteredEEG")
     load(Option.animal + "avgeeg.mat");
     [H, times] = eventMatrix.generateFromFilteredEEG(avgeeg, ...
-        Option.sourceArea, "patterns",["theta","delta","ripple"],"downsample",100);
+        Option.sourceArea, "patterns",["theta","delta","ripple"]);
 end
 
 %making the ripple column of H zero when H is generated from Filtered EEG?
@@ -163,25 +147,21 @@ X_hpc = trialSpikes.separateSpikes(spikeSampleMatrix, areaPerNeuron, "CA1");
 [nPFCneurons,~] = size(X_pfc{1});
 [nHPCneurons,~] = size(X_hpc{1});
 
-X_source = cell(Option.numPartition, 1, numResult);
-X_target = cell(Option.numPartition, 2, numResult);
-% 
-% [X_source, X_target, nSource] = trialSpikes.splitSourceTarget...
-%     (2, numResult, X_hpc, X_pfc, 'specifiedSource', "CA1");
+[X_source, X_target, nSource] = trialSpikes.splitSourceTarget...
+    (2, numResult, X_hpc, X_pfc, 'specifiedSource', "HPC");
 
 %%%%%%%%%%%%%%%% PRE-RESULT SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Results place to store outputs
 clear Patterns
-Patterns = struct("X_source",[], "X_target",[]);
 Patterns.rankRegress = struct(...
     "B", [], ...
     "B_", [], ...
-    "optDimReducedRankRegParess", 0, ...
+    "optDimReducedRankRegress", 0, ...
     "cvl_rankRegress", [], ...
     "cvLoss_rankRegress", [], ...
     "singlesource_B", [], ...
     "singlesource_optDim",[]);
-Patterns.factorAnalysis = struct(...
+Patterns.factorAnalysis = struct(
     "qOpt_source",[],...
     "Z_source",[],...
     "U_source",[],...
@@ -194,37 +174,28 @@ Patterns.factorAnalysis = struct(...
 patternNames = ["theta","delta","ripple",...
     "theta-control","delta-control","ripple-control"];
 
+for i = 1:numResult-1
+    Patterns = [Patterns Patterns(1)];
+end
 
-Patterns = repmat(Patterns, [Option.numPartition,2,numResult]);
-%
-% for i = 1:numResult-1
-%     Patterns = [Patterns Patterns(1)];
-% end
-%
-%
-% Patterns = [Patterns; Patterns];
-for iPartition = 1:Option.numPartition
-    [X_source(iPartition,:),X_target(iPartition,:,:), nSource] = trialSpikes.splitSourceTarget...
-        (2, numResult, X_hpc, X_pfc, 'specifiedSource', "CA1");
-    
+if Option.directionality == "2 direction" % hpc-hpc and hpc-pfc
+    Patterns = [Patterns; Patterns];
     for i = 1:numResult % "expected ONE OUTPUT from dot indexing"
-        Patterns(iPartition,HPC,i).directionality = "hpc-hpc";
-        Patterns(iPartition,HPC,i).X_source = X_source{iPartition,:,i};
-        Patterns(iPartition,HPC,i).X_target = X_target{iPartition,1,i};
-        Patterns(iPartition,HPC,i).name = patternNames(i);
+        Patterns(HPC,i).directionality = "hpc-hpc";
+        Patterns(HPC,i).X_source = X_source{i};
+        Patterns(HPC,i).X_target = X_target{1,i};
+        Patterns(HPC,i).name = patternNames(i);
         
         
-        Patterns(iPartition,PFC,i).directionality = "hpc-pfc";
-        Patterns(iPartition,PFC,i).X_source = X_source{iPartition,:,i};
-        Patterns(iPartition,PFC,i).X_target = X_target{iPartition,2,i};
-        Patterns(iPartition,PFC,i).name = patternNames(i);
+        Patterns(PFC,i).directionality = "hpc-pfc";
+        Patterns(PFC,i).X_source = X_source{i};
+        Patterns(PFC,i).X_target = X_target{2,i};
+        Patterns(PFC,i).name = patternNames(i);
     end
 end
-%%
-%%%%%%%%%%%%%%%% RANK-REGRESS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%%%%%%%%%%%%%% RANK-REGRESS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 numDimsUsedForPrediction = 1:nPFCneurons;
-for p = 1:Option.numPartition
 for i = 1:numResult
     
     B_singleprediction = cell(1,nSource);
@@ -238,17 +209,16 @@ for i = 1:numResult
         (regressMethod, Ytrain, Xtrain, Ytest, Xtest, ...
         numDimsUsedForPrediction, 'LossMeasure', 'NSE');
     
-    curr_source = (Patterns(p,1,i).X_source)';
+    curr_source = (Patterns(1,i).X_source)';
     
     for j = [HPC, PFC]
-        
-        curr_target = (X_target{p,j,i})';
-        [   Patterns(p,j,i).rankRegress.cvl, ...
-            Patterns(p,j,i).rankRegress.cvLoss,...
-            Patterns(p,j,i).rankRegress.optDimReducedRankRegress,...
-            Patterns(p,j,i).rankRegress.B,...
-            Patterns(p,j,i).rankRegress.B_,...
-            Patterns(p,j,i).rankRegress.V] ...
+        curr_target = (X_target{j,i})';
+        [   Patterns(j,i).rankRegress.cvl, ...
+            Patterns(j,i).rankRegress.cvLoss,...
+            Patterns(j,i).rankRegress.optDimReducedRankRegress,...
+            Patterns(j,i).rankRegress.B,...
+            Patterns(j,i).rankRegress.B_,...
+            Patterns(j,i).rankRegress.V] ...
             = rankRegressRoutine(cvFun, cvNumFolds, ...
             cvOptions, curr_target, curr_source, ...
             numDimsUsedForPrediction);
@@ -256,9 +226,6 @@ for i = 1:numResult
             % Single neuron prediction
             for k = 1:nSource
                 curr_singlesource = curr_source(:,j);
-                if clean.zeroFiring(curr_singlesource)
-                    continue;
-                end
                 [~,~, ...
                     dim_singleprediction{k}, ...
                     B_singleprediction{k},~,~] = ...
@@ -267,9 +234,9 @@ for i = 1:numResult
                     curr_singlesource,...
                     numDimsUsedForPrediction);
             end
-            Patterns(p,j,i).rankRegress.singlesource_B = B_singleprediction;
+            Patterns(j,i).rankRegress.singlesource_B = B_singleprediction;
             
-            Patterns(p,j,i).rankRegress.singlesource_optDim = ...
+            Patterns(j,i).rankRegress.singlesource_optDim = ...
                 dim_singleprediction;
         catch
             usingSingleprediction = false;
@@ -277,22 +244,10 @@ for i = 1:numResult
     end
     
 end
-end
 
 
-
-
-
-
-
-
-
-
-
-
-%%
 %%%%%%%%%%%%%%%% FACTOR ANALYSIS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-doFactorAnalysis = false;
+doFactorAnalysis = true;
 if doFactorAnalysis
     
     % How many dimensions did we maximally have for Bdims
@@ -325,7 +280,7 @@ if doFactorAnalysis
         q_hpc = 1:max(nHPCneurons,maxBdim);
         
         tic % start timing how long this takes
-        cvLoss_pfc= CrossValFa(curr_pfc, q_pfc, cvNumFolds, cvOptions, ...
+        cvLoss_pfc = CrossValFa(curr_pfc, q_pfc, cvNumFolds, cvOptions, ...
             'gpu', fa_gpuState, 'speedup', false);
         disp(cvLoss_pfc);
         toc % print how long it took
@@ -333,7 +288,7 @@ if doFactorAnalysis
         qOpt_pfc = FactorAnalysisModelSelect(cvLoss, q_pfc);
         
         tic;
-        cvLoss_hpc= CrossValFa(curr_hpc, q_hpc, cvNumFolds, cvOptions, ...
+        cvLoss_hpc = CrossValFa(curr_hpc, q_hpc, cvNumFolds, cvOptions, ...
             'gpu', fa_gpuState, 'speedup', false);
         qOpt_hpc = FactorAnalysisModelSelect(cvLoss, q_hpc);
         toc;
@@ -342,6 +297,8 @@ if doFactorAnalysis
         Pattern(2,i).factorAnalysis.qOpt_pfc = qOpt_pfc;
     end
     
+    
+    
     %     % -------------------------------------
     %     % For each area, extract latent factors
     %     % -------------------------------------
@@ -349,40 +306,35 @@ if doFactorAnalysis
     %     [Z_pfc, U_pfc, Q_pfc] = ExtractFaLatents(X_pfc', qOpt_pfc);
     %     [Z_hpc, U_hpc, Q_hpc] = ExtractFaLatents(X_hpc', qOpt_hpc);
 end
-%%
 
-%%%%%%%%%%%%%%%% CREATE TABLE AND SAVE RESULTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%% CREATE TABLE AND SAVE RESULTS %%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % Prepare table!
 TABLE = load("Megatable.mat");
-Optiontable  = array2table(struct2array(Option));
-Patterntable = array2table( Patterns(:)');
+Optiontable  = table(struct2array(Option));
+Patterntable = table( Patterns(:)');
 
-% Identifying information about this options set and date of run
-hash = DataHash(Option);
+% Prepare pattern struct
+hash = DataHash(Options);
 hash = hash(1:7); % Take the first 7 letters of the hash
 hash = string(hash);
-datestr   = cell(1,1);
-datastr{1} = date();
+datestr   = date();
 Filetable = table(hash, datestr);
 
 % If it's a previous seen option, replace the row, otherwise append
 tablerow = table(Optiontable, Patterntable, Filetable);
 % Prevous options: Replace row
-%%
 if any(contains(TABLE.Filetable.hash, hash))
-    TABLE(contains(TABLE.Filetable.hash, hash), :) = tablerow;
-    disp("already computed before, rehashing to the same location");
-    % New options:    Append row
+    TABLE(contains(TABLE.Filetable.hash, has), :) = tablerow;
+% New options:    Append row
 else
     TABLE    = [TABLE.TABLE; tablerow];
-    disp("new results stored!")
 end
 
-%%
 % Save
 save Megatable.mat TABLE
 save(fullfile(datadefine, "hash", hash), ...
-    "Patterns", "Option", '-v7.3')
+     "Patterns", "Options", '-v7.3')
 
 %% Higher priority TODO
 % 2. Save table with all Option fields + number of hpc neurons useed to

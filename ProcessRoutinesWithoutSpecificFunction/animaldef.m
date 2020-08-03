@@ -1,29 +1,29 @@
 function animalinfo = animaldef(animalname)
-	
+
 % Get the user name! and determine user specific root folder
 if ispc
     rootfolder = "\\citadel.bio.brandeis.edu\sharespace-commsub\";
 elseif  ismac
     rootfolder = "~/Data/commsubspace/";
 end
-    
-switch animalname
 
+switch animalname
+    
     % Goal Maze Animals
     case 'RY7', animalinfo={'RY7',['/media/ryoung/Thalamus' filesep 'ry_GoalCoding_Project/RY7_experiment/RY7_direct'],'RY7'};
     case 'RY9', animalinfo={'RY9',['/media/ryoung/Thalamus' filesep 'ry_GoalCoding_Project/RY9_experiment/RY9_direct'],'RY9'};
-    
-    % Phase disrupt animals
+        
+        % Phase disrupt animals
     case 'CL1', animalinfo={'CL1',[rootfolder 'Phase/CL1_direct/'],'CL1'};
     case 'SG7', animalinfo={'SG7',[rootfolder 'OdorPlace/SG7Expt/SG7_direct/'],'SG7'};
-
-    % CA3-CA1 animals
-    % Right now, just animals we navigated tetrodes down to CA3 to figure out how to get there
-    case 'EG1'
-	animalinfo = {'EG1', [rootfolder 'CA3-CA1/Efizz/EG1_direct/'] , 'EG1'};
-
         
-    % Single day animals
+        % CA3-CA1 animals
+        % Right now, just animals we navigated tetrodes down to CA3 to figure out how to get there
+    case 'EG1'
+        animalinfo = {'EG1', [rootfolder 'CA3-CA1/Efizz/EG1_direct/'] , 'EG1'};
+        
+        
+        % Single day animals
     case 'YD6'
         animalinfo = {'YD6', strcat(rootfolder, 'W-Track_WellTrained_EPHYS/YD6_direct/'),'YD6'};
     case 'ER1'
@@ -54,14 +54,17 @@ switch animalname
         animalinfo = {'JS17', strcat(rootfolder, 'SingleDayExpt/JS17_direct/'),'JS17'};
     case 'JS21'
         animalinfo = {'JS21', strcat(rootfolder, 'SingleDayExpt/JS21_direct/'),'JS21'};
-        case 'JS21'
+    case 'JS21'
         animalinfo = {'JS21', strcat(rootfolder, 'SingleDayExpt/JS21_direct/'),'JS21'};
+    case 'ZT2'
+        animalinfo = {'ZT2', strcat(rootfolder, 'SingleDayExpt/ZT2_direct/'),'ZT2'};
         
-    % New 8day HC-PFC animals
+        
+        % New 8day HC-PFC animals
     case 'SJ5'
-        animalinfo = {'SJ5', strcat(rootfolder, 'HP_8dayExpt/SJ5_direct/'),'SJ5'};    
+        animalinfo = {'SJ5', strcat(rootfolder, 'HP_8dayExpt/SJ5_direct/'),'SJ5'};
         
-    % Ripple interruption, old animals
+        % Ripple interruption, old animals
     case 'sjc'
         animalinfo = {'sjc', strcat(rootfolder, 'RippleDisruption_all/RippleDisruption/sjc_direct/'), 'sjc'};
     case 'RE1'
@@ -94,8 +97,8 @@ switch animalname
         animalinfo = {'REg', strcat(rootfolder, 'RippleDisruption_all/RippleDisruption/REg_direct/'), 'REg'};
     case 'REh'
         animalinfo = {'REh', strcat(rootfolder, 'RippleDisruption_all/RippleDisruption/REh_direct/'), 'REh'};
-
-    % Hippocampal-prefrontal animals
+        
+        % Hippocampal-prefrontal animals
     case 'HPa'
         animalinfo = {'HPa', strcat(rootfolder, 'HP_8dayExpt/HPExpt/HPa_direct/'), 'HPa'};
     case 'HPb'
@@ -109,7 +112,7 @@ switch animalname
     case 'Borg'
         animalinfo = {'Brg', strcat(rootfolder, 'HP_8dayExpt/HPExpt/Brg_direct/'), 'Brg'};
         
-    % UH  OH -- animal name not recognized ...
+        % UH  OH -- animal name not recognized ...
     otherwise
         error(['Animal ',animalname, ' not defined.']);
 end

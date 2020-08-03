@@ -1,17 +1,23 @@
 function [H, times] = generateFromFilteredEEG(avgEEGStruct, brainArea, varargin)
-%GENERATEFROMFILTEREDEEG (in devo, not tested, possibly flawed)
+
 % this function genegrates event windows based on averaged eeg files taking
 % into consideration specified phase windows
 
-% avgEEGStruct:
+% avgEEGStruct: eeg file containing filtered and averaged eeg
+% brainArea: the area interested in (CA1)
+
+% outputs:
+% H: the event matrix (with specified rhythm patterns)
 
 %% Parse optional arguments
 ip = inputParser;
 ip.addParameter('phaseWindow', []); % Window of possible phases to accept (if not empty)
 ip.addParameter('downsample',  []); % How much (if not empty) to downsample data
-ip.addParameter('patterns',    ["theta","delta"]); % Which patterns in avgEEGStruct to use
+ip.addParameter('patterns',    ["theta","delta","ripple"]); % Which patterns in avgEEGStruct to use
 ip.parse(varargin{:});
 opt = ip.Results;
+
+PHASE = 2; AMP = 3;
 
 % If user passes a branched cell array, instead of an ndimension struct, converet it!
 if iscell(avgEEGStruct)
@@ -22,52 +28,44 @@ else
 end
 
 %% Iteratitvely build H
-times = [];
-H     = [];
+H = [];
 
-for index = indices'
-  count = count+1
-    I = num2cell(index);
-    singleStruct = avgEEGStruct( I{:} );
-
+nPatterns = numel(opt.patterns);
+for iPattern = 1:nPatterns
+    patternH     = [];
+    times = [];
+    for index = indices'
+        
+        I = num2cell(index);
+        singleStruct = avgEEGStruct( I{:} );
+        
         % If this data not from the requested brain area, skip
         if ~isequal( singleStruct.area , brainArea )
             continue
         end
         
         % Get times of this single day-ep-brainarea
-        singleTimes = geteegtimes(singleStruct);
+        singleTime = geteegtimes(singleStruct);
+        % Data for ths single  day-ep-brainarea
+        eegData     = singleStruct.(opt.patterns(iPattern)).data;
+        eegData = double(eegData);
         
-        % Get the H of this single day-ep-brainarea
-        % (This set of two steps might be wrong if singleH cell have structs)
-        singleH    = arrayfun(@(field) singleStruct.(field), opt.patterns,...
-            'UniformOutput', false);
-%          singleH    = arrayfun(@(field) singleStruct.(field), "delta",...
-%             'UniformOutput', false);
-        singleH     = cat(2, singleH{1}.data); 
-    
-    % first downsample 
-    if ~isempty(opt.downsample)
-        singleH = downsample(singleH, opt.downsample);
-        singleTimes = downsample(singleTimes, opt.downsample);
-    end
-%     singleH = downsample(singleH,100);
-%         singleTimes = downsample(singleTimes,100);
-    if ~isempty(opt.phaseWindow)
-         todelete = [];
-        for iPossibleWindow = 1:size(singleH,1)
-            if (~eventMatrix.inPhaseWindows(double(singleH(iPossibleWindow,2))/10000,opt.phaseWindow))
-                todelete = [todelete iPossibleWindow];
-            end
+        % DOWNSAMPLE?
+        if ~isempty(opt.downsample) % IF A DOWNSAMPLE IS GIVEN BY THE USER, USE IT
+             eegData     = downsample(eegData,opt.downsample);
+             singleTime = downsample(singleTime,opt.downsample);
         end
-        singleH(todelete,:)   = []; % RY: nan or zero maybe instead of delete to cut down on discontinuity?.. especially when you plot this, it may look a little funky even though correct.
-        singleTimes(todelete) = []; % and if nans/zeros, then comment this out.
-        % nans probably over zeros ... nans do not contribute to the
-        % quantile stats during the windows.make() call
+
+        % SELECT PHASES?
+        if ~isempty(opt.phaseWindow) % IF A PHASE WINDOW IS GIVEN BY THE USER, USE IT
+            toNan = ~eventMatrix.inPhaseWindows(double(eegData(:,PHASE))/10000, ...
+                opt.phaseWindow);
+            eegData(toNan,:)   = nan;
+        end
+        
+        patternH = [patternH;     eegData(:,AMP)];
+        times    = [times; singleTime(:)];
     end
-
     % Build the data
-    times = [times singleTimes];
-    H     = [H;     singleH(:,1)];
-
+    H     = [H patternH]; 
 end

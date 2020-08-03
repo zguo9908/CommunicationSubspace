@@ -1,4 +1,5 @@
-function [performance, mean_performance] = calculatePredicationPerformance(X_source, X_target, B)
+function [performance, mean_performance] = ...
+                   calculatePredicationPerformance(X_source, X_target, B)
 % calculate the predictive performance of source firing to target firing
 
 [~,nTarget] = size(X_target);

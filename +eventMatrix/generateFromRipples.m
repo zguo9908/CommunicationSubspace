@@ -1,4 +1,5 @@
-function [times, ripples_are_happening] = generateFromRipples(rippleData, samprate, varargin)
+function [times, ripples_are_happening] = generateFromRipples(rippleData, ...
+                                                        samprate, varargin)
 % Input
 % -----
 % rippleData : cell of structs
@@ -61,7 +62,7 @@ end
 %%  Mark each time in the axis
 for i = 1:length(times)
     ripples_that_are_in_the_past = ripple_windows(:,2) < times(i);
-    ripple_windows(ripples_that_are_in_the_past,:) = []; % RY: Delete ripples with ends less than the current time ... speeds up code, lessens search time
+    ripple_windows(ripples_that_are_in_the_past,:) = [];
     for j = 1:size(ripple_windows,1)
         if times(i)>=ripple_windows(j,1) && times(i)<ripple_windows(j,2)
             if opt.amplitude_at_riptime == false 

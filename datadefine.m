@@ -2,8 +2,12 @@ function folder = datadefine()
 % Automates pointing to the data  folders location on our computers
 
 if ispc
-    disp('Ziyi: insert your data folder path here');
-    folder = '';
+    disp('Defining data folder for Ziyi machine');
+    folder = 'C:\\Users\BrainMaker\commsubspace\';
+elseif ismac
+    disp('Defining data folder for Ryan''s machine');
+    folder = '~/Data/commsubspace/';
 elseif isunix
-    folder = '/Volumes/GoogleDrive/Share\ Drives/CommSubspace';
+    disp('Defining data folder for Ryan''s linux machine');
+    folder = '/Volumes/';
 end

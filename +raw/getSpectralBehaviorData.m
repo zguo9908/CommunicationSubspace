@@ -122,10 +122,11 @@ for animal = animalList
         if isequal(opt.epochType,'run')
             cgramfile = 'cgramcnew';
         else
-            %cgramfile = 'cgramc';
-            cgramfile = 'cgramcnew';
+           cgramfile = 'cgramcnew';
+
         end
-        cgramc_file = [animal{1} cgramfile sprintf('-%02d-%02d.mat', dayepoch)];
+        temp = join([animal{1} cgramfile sprintf('-%02d-%02d.mat', dayepoch)]);
+        cgramc_file = strrep(temp, ' ', '');
         if ~exist(cgramc_file, 'file')
             disp('File does not exist .. Continuing')
             continue
@@ -133,7 +134,7 @@ for animal = animalList
             disp("Processing")
         end
         load(cgramc_file)
-        cgramc = cgramcnew;
+       cgramc = cgramcnew;
         data = ffend(cgramc);
         data.orig.t    = data.t;
         data.t         = data.t + offset;

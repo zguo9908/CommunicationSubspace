@@ -1,4 +1,6 @@
-function [spikeSampleMatrix, spikeSampleTensor] = generate(spikeCountMatrix, timeAxis, Htrials, samplesPerTrial, numResult)
+function [spikeSampleMatrix, spikeSampleTensor] = ...
+                                    generate(spikeCountMatrix, timeAxis,...
+                                    Htrials, samplesPerTrial, numResult)
 %
 % Input
 % -----
@@ -18,8 +20,6 @@ function [spikeSampleMatrix, spikeSampleTensor] = generate(spikeCountMatrix, tim
 % ------
 % spikeSampleMatrix : {neuron x (time*trial) per network pattern}
 % spikeSampleTensor : {neuron x time x trial per network pattern}
-
-%samplesPerTrial = 6;
 
 [nNeurons,~] = size(spikeCountMatrix);
 

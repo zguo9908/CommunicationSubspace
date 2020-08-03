@@ -1,4 +1,5 @@
-function H = generateFromSpectra(times, spectrogram, frequencyAxis, frequenciesPerPattern, varargin)
+function H = generateFromSpectra(times, spectrogram, frequencyAxis, ...
+                                 frequenciesPerPattern, varargin)
 
     % GENERATEH generates H matrix from lfp data
     
