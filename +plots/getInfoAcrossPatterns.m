@@ -8,7 +8,7 @@ function result = getInfoAcrossPatterns(Patterns, varargin)
 % You can also specify the region of interest.
 % Or the specific rhythm of interest
 
-% RETURN ONE LIST AT A TIME
+% RETURN ONE CELL VECTOR AT A TIME
 
 ip = inputParser;
 ip.addParameter('field', []); % field of interest
@@ -18,7 +18,6 @@ ip.addParameter('field', []); % field of interest
 
 ip.addParameter('direction',  []); % region of interest {hpc-hpc, hpc-pfc}
 ip.addParameter('pattern', []); % rhythm of interest {theta, delta, ripple, control}
-
 
 ip.parse(varargin{:});
 opt = ip.Results;

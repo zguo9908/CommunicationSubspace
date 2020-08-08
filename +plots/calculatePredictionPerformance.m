@@ -3,7 +3,11 @@ function [performance, mean_performance] = ...
 % calculate the predictive performance of source firing to target firing
 
 [~,nTarget] = size(X_target);
+try
 [loss, yhat] = RegressPredict(X_target, X_source, B);
+catch
+    keyboard
+end
 performance = [];
 
 for j = 1:nTarget

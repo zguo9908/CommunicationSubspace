@@ -1,4 +1,4 @@
-function [X_source, X_target, nSource] = splitSourceTarget(sourceArea,...
+function [X_source, X_target, nSource, nTarget] = splitSourceTarget(sourceArea,...
     numResult, X_hpc, X_pfc, varargin)
 % Based on the number of directions asked, this function spilt the two
 % firing matrices into source and target matices cell.
@@ -20,8 +20,8 @@ ip.addParameter('specifiedSource', "CA1", @isstring);
 ip.parse(varargin{:});
 opt = ip.Results;
 
- notUsingPFC = false;
- notUsingHPC = false;
+notUsingPFC = false;
+notUsingHPC = false;
 
 X_source = cell(1,numResult);
 X_target = cell(2,numResult);
@@ -46,8 +46,10 @@ if nhpc > npfc
     
     if nhpc - npfc <15
         nSourceHPC = 15;
+       
     else
         nSourceHPC = nhpc - npfc;
+
     end
     
     if notUsingPFC
@@ -55,6 +57,8 @@ if nhpc > npfc
     else
         nSourcePFC = floor(0.5*npfc); 
     end
+    
+
 else
     
     if notUsingPFC
@@ -72,27 +76,35 @@ else
         nSourceHPC = floor(0.5*nhpc);
     end
     
+
 end
 
 if opt.specifiedSource == "CA1"
     nSource = nSourceHPC;
+    nTarget = nhpc-nSource;
     for i = 1:numResult
         curr_hpc = X_hpc{i}(randperm(nhpc),:);
         curr_source = curr_hpc(1:nSource,:);
         X_source{i} = curr_source;
         curr_target = curr_hpc(nSource+1:nhpc,:);
         X_target{1,i} = curr_target;
-        X_target{2,i} = X_pfc{i};
+        
+        curr_pfc = X_pfc{i}(randperm(npfc),:);
+        X_target{2,i} = curr_pfc(1:nTarget,:);
     end
 else
     nSource = nSourcePFC;
+    nTarget = npfc-nSource;
     for i = 1:numResult
         curr_pfc = X_pfc{i}(randperm(npfc),:);
         curr_source = curr_pfc(1:nSource,:);
         X_source{i} = curr_source;
         curr_target = curr_pfc(nSource+1:npfc,:);
         X_target{1,i} = curr_target;
-        X_target{2,i} = X_hpc{i};
+        
+        
+        curr_hpc = X_hpc{i}(randperm(nhpc),:);
+        X_target{2,i} = curr_hpc(1:nTarget,:);
     end
     
     

@@ -4,7 +4,7 @@ addpath(genpath(pwd)) % all folders in utils added, including semedo code
 
 
 if ~exist('animal','var')
-    animal = "ZT2";
+    animal = "JS15";
 end
 addpath(genpath(pwd)) % all folders in utils added, including semedo code
 
@@ -35,20 +35,21 @@ Option.generateFromRipTimes = true; % Whether to replace H(:, ripple) as
 % pattern determined by global ripple
 % rimes.
 Option.animal    = animal;
+% Option.generateH = "fromFilteredEEG_fromRipTimes";
 Option.generateH = "fromSpectral_fromRipTimes";
-%Option.generateH = "fromSpectra_fromRipTimes";
 % This option field have these possibilities:
 %  1)"fromSpectral",
 %  2)"fromFilteredEEG",
 %  3)"fromFilteredEEG_fromRipTimes"
 %  4)"fromSpectra_fromRipTimes", where fromRipTimes causes only the ripple
-%  pattern to  derive from global ripples
+%  pattern to derive from global ripples
 
+Option.samplingRate  = [] ;         % For spikes.getSpikeTrain
 Option.spikeBinSize  = 0.1;          % 100 milliseconds
 Option.timesPerTrial = 10;         % 10 times per trial
-Option.winSize       = 0.3;              % size of the window
+Option.winSize       = 0.2;              % size of the window
 Option.sourceArea    = "CA1";
-Option.equalWindowsAcrossPatterns = false;    % whether all three patterns have the same #windows
+Option.equalWindowsAcrossPatterns = true;    % whether all three patterns have the same #windows
 Option.singleControl = true;                 % whether to use just one control column
 Option.numPartition = 10;                    % ways to split source and target
 usingSingleprediction = true;
@@ -88,13 +89,16 @@ elseif contains(Option.generateH, "fromFilteredEEG")
         Option.sourceArea, "patterns",["theta","delta","ripple"],"downsample",100);
 end
 
-%making the ripple column of H zero when H is generated from Filtered EEG?
+
 if contains(Option.generateH,"fromRipTimes")
     load(Option.animal + "globalripple01.mat");
     [ripplecolumntimes,ripplecolumn] = eventMatrix.generateFromRipples(globalripple, 500, ...
         'amplitude_at_riptime', true);
-    samplepoints = interp1(ripplecolumntimes, ripplecolumn, times);
+    samplepoints = interp1(ripplecolumntimes, ripplecolumn, unique(times));
+    
+  
     H(:,RIPPLE) = samplepoints';
+  
 end
 
 %%
@@ -126,8 +130,9 @@ for pattern = 1:nPatterns
     Hc_cellOfWindows{pattern} = curr;
 end
 
-% Merge into one
-H(:,nPatterns+1:nPatterns*2) = Hc;
+
+% % Merge into one
+% H(:,nPatterns+1:nPatterns*2) = Hc;
 cellOfWindows(nPatterns+1:nPatterns*2) = Hc_cellOfWindows;
 
 % Equalize trials/windows for each pair of patttern-controlPattern
@@ -149,7 +154,7 @@ end
 %%%%%%%%%%%%%%%% SPIKE SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Getting spikes
 [timeAxis, times_spiking, spikeCountMatrix, spikeRateMatrix, areaPerNeuron] = ...
-    spikes.getSpikeTrain(Option.animal, Option.spikeBinSize);
+    spikes.getSpikeTrainSlow(Option.animal, Option.spikeBinSize, Option.samplingRate);
 
 % making pattern matrices
 [spikeSampleMatrix, spikeSampleTensor] = ...
@@ -165,9 +170,6 @@ X_hpc = trialSpikes.separateSpikes(spikeSampleMatrix, areaPerNeuron, "CA1");
 
 X_source = cell(Option.numPartition, 1, numResult);
 X_target = cell(Option.numPartition, 2, numResult);
-% 
-% [X_source, X_target, nSource] = trialSpikes.splitSourceTarget...
-%     (2, numResult, X_hpc, X_pfc, 'specifiedSource', "CA1");
 
 %%%%%%%%%%%%%%%% PRE-RESULT SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Results place to store outputs
@@ -176,7 +178,7 @@ Patterns = struct("X_source",[], "X_target",[]);
 Patterns.rankRegress = struct(...
     "B", [], ...
     "B_", [], ...
-    "optDimReducedRankRegParess", 0, ...
+    "optDimReducedRankRegress", 0, ...
     "cvl_rankRegress", [], ...
     "cvLoss_rankRegress", [], ...
     "singlesource_B", [], ...
@@ -196,15 +198,9 @@ patternNames = ["theta","delta","ripple",...
 
 
 Patterns = repmat(Patterns, [Option.numPartition,2,numResult]);
-%
-% for i = 1:numResult-1
-%     Patterns = [Patterns Patterns(1)];
-% end
-%
-%
-% Patterns = [Patterns; Patterns];
+
 for iPartition = 1:Option.numPartition
-    [X_source(iPartition,:),X_target(iPartition,:,:), nSource] = trialSpikes.splitSourceTarget...
+    [X_source(iPartition,:),X_target(iPartition,:,:), nSource, nTarget] = trialSpikes.splitSourceTarget...
         (2, numResult, X_hpc, X_pfc, 'specifiedSource', "CA1");
     
     for i = 1:numResult % "expected ONE OUTPUT from dot indexing"
@@ -223,7 +219,7 @@ end
 %%
 %%%%%%%%%%%%%%%% RANK-REGRESS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-numDimsUsedForPrediction = 1:nPFCneurons;
+numDimsUsedForPrediction = 1:nTarget;
 for p = 1:Option.numPartition
 for i = 1:numResult
     
@@ -278,16 +274,6 @@ for i = 1:numResult
     
 end
 end
-
-
-
-
-
-
-
-
-
-
 
 
 %%
@@ -353,8 +339,10 @@ end
 
 %%%%%%%%%%%%%%%% CREATE TABLE AND SAVE RESULTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Prepare table!
-TABLE = load("Megatable.mat");
+% load("Megatable.mat");
 Optiontable  = array2table(struct2array(Option));
+optionnames = fieldnames(Option)';
+Optiontable.Properties.VariableNames = optionnames;
 Patterntable = array2table( Patterns(:)');
 
 % Identifying information about this options set and date of run
@@ -365,35 +353,25 @@ datestr   = cell(1,1);
 datastr{1} = date();
 Filetable = table(hash, datestr);
 
-% If it's a previous seen option, replace the row, otherwise append
 tablerow = table(Optiontable, Patterntable, Filetable);
-% Prevous options: Replace row
-%%
+
+%% Check and Hash
 if any(contains(TABLE.Filetable.hash, hash))
     TABLE(contains(TABLE.Filetable.hash, hash), :) = tablerow;
     disp("already computed before, rehashing to the same location");
     % New options:    Append row
 else
-    TABLE    = [TABLE.TABLE; tablerow];
+    TABLE    = [TABLE; tablerow];
     disp("new results stored!")
 end
 
-%%
-% Save
-save Megatable.mat TABLE
+%% Save
+save ("Megatable", "TABLE",'-v7.3');
 save(fullfile(datadefine, "hash", hash), ...
     "Patterns", "Option", '-v7.3')
-
-%% Higher priority TODO
-% 2. Save table with all Option fields + number of hpc neurons useed to
-% compute, number of pfc neurons used to compute, number of dimension found
-% per pattern, cvLoss matrix (if possible), factor analysis outputs (we
+%%
+% 2. Save table with all factor analysis outputs (we
 % still lack these)
 % 3. Implement factor analysis outputs
 % 4. Implement acquiring Figure 2 distributions from semedo paper
-% 5. Generalize window equalization more, at moment only option is to
-% equalize numbers between pairs of windows
-
-%% Lower priority TODO
-% 2. Try Coherence Hs, SeqNMF Hs (I can supply), track spatial Hs
 

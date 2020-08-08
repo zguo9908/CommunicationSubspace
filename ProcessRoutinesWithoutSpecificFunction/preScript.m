@@ -1,4 +1,6 @@
-animalname = "KL8"; %% change here
+animalname = "JS12"; %% change here
+animalpath = ("C:\Users\BrainMaker\commsubspace\SingleDayExpt\"+animalname+"_direct");
+cd (animalpath)
 
 % animaldef
 animalinfo = animaldef(animalname);
@@ -6,11 +8,12 @@ animalinfo = animaldef(animalname);
 % getSpectralBehaviorData
 animal = {animalname};
 data = raw.getSpectralBehaviorData(animal);
+save(animalname+'spectralBehavior.mat','-struct','data');
+% save(animal+"spectralBehavior","data");
 
 % getGlobalRipple
 globalripple = generateGlobalRipple(animalname);
-animalpath = ("C:\Users\BrainMaker\commsubspace\SingleDayExpt\"+animalname+"_direct");
-cd (animalpath)
-save(animal+"globalripple01", "globalripple");
+
+save(animalname+"globalripple01", "globalripple");
 
 % get avgeeg

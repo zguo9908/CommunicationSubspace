@@ -1,6 +1,4 @@
-function [spikeSampleMatrix, spikeSampleTensor] = ...
-                                    generate(spikeCountMatrix, timeAxis,...
-                                    Htrials, samplesPerTrial, numResult)
+function [spikeSampleMatrix, spikeSampleTensor] = generate(spikeCountMatrix, timeAxis, Htrials, samplesPerTrial, numResult)
 %
 % Input
 % -----
@@ -20,6 +18,8 @@ function [spikeSampleMatrix, spikeSampleTensor] = ...
 % ------
 % spikeSampleMatrix : {neuron x (time*trial) per network pattern}
 % spikeSampleTensor : {neuron x time x trial per network pattern}
+
+%samplesPerTrial = 6;
 
 [nNeurons,~] = size(spikeCountMatrix);
 
@@ -62,7 +62,13 @@ for iPattern = progress(1:numResult, 'Title', 'Patterns')
         % Per neuron interpolate
         for j = 1:nNeurons
             neuron_spiking = spikeCountMatrix(j,logicalIndexes);
-            interped_spiking = interp1(t,neuron_spiking, tq, 'linear');
+             try
+            
+                    interped_spiking = interp1(t,neuron_spiking, tq, 'linear');
+              
+             catch
+                 keyboard
+             end
             currTensor(j,:,i) = interped_spiking;
         end
     end

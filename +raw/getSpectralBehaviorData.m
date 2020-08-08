@@ -52,6 +52,8 @@ function data = getSpectralBehaviorData(animalList, varargin)
 % --------------------------------
 % Parse optional keyword-arg pairs
 % --------------------------------
+
+isNew = false;
 ip = inputParser;
 ip.addParameter('epochType', 'run', @(x) ischar(x) || isstring(x))
 ip.addParameter('fields', {'wpli','S1','S2'}); 
@@ -120,11 +122,20 @@ for animal = animalList
         % -- load spectral info --
         % ------------------------
         if isequal(opt.epochType,'run')
-            cgramfile = 'cgramcnew';
+            if isNew
+                cgramfile = "cgramcnew"
+            else
+                cgramfile = 'cgramc';
+            end
         else
-           cgramfile = 'cgramcnew';
+           if isNew
+                cgramfile = "cgramcnew"
+           else
+                cgramfile = 'cgramc';
+            end
 
         end
+        cgramfile = "cgramc";
         temp = join([animal{1} cgramfile sprintf('-%02d-%02d.mat', dayepoch)]);
         cgramc_file = strrep(temp, ' ', '');
         if ~exist(cgramc_file, 'file')
@@ -134,7 +145,9 @@ for animal = animalList
             disp("Processing")
         end
         load(cgramc_file)
+        if isNew
        cgramc = cgramcnew;
+        end
         data = ffend(cgramc);
         data.orig.t    = data.t;
         data.t         = data.t + offset;

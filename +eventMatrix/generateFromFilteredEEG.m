@@ -29,11 +29,11 @@ end
 
 %% Iteratitvely build H
 H = [];
-
+times = [];
 nPatterns = numel(opt.patterns);
 for iPattern = 1:nPatterns
     patternH     = [];
-    times = [];
+  
     for index = indices'
         
         I = num2cell(index);
@@ -69,3 +69,5 @@ for iPattern = 1:nPatterns
     % Build the data
     H     = [H patternH]; 
 end
+
+times = times';
