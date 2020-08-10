@@ -4,7 +4,7 @@ addpath(genpath(pwd)) % all folders in utils added, including semedo code
 
 
 if ~exist('animal','var')
-    animal = "JS15";
+    animal = "ER1";
 end
 addpath(genpath(pwd)) % all folders in utils added, including semedo code
 
@@ -15,7 +15,7 @@ elseif ismac
     paths(1) = "/Volumes/sharespace-commsub/data";
     paths(2) = "~/Data/commsubspace";
 end
-% Set data paths for that computer
+% Set data paths for that computer 
 arrayfun(@(path) addpath(genpath(path)), paths);
 % % ---------- Add paths for specific users ------------------------------
 % addpath(genpath(datadef(user))); % this line throws an error for pc
@@ -35,8 +35,8 @@ Option.generateFromRipTimes = true; % Whether to replace H(:, ripple) as
 % pattern determined by global ripple
 % rimes.
 Option.animal    = animal;
-% Option.generateH = "fromFilteredEEG_fromRipTimes";
-Option.generateH = "fromSpectral_fromRipTimes";
+Option.generateH = "fromFilteredEEG_fromRipTimes";
+% Option.generateH = "fromSpectral_fromRipTimes";
 % This option field have these possibilities:
 %  1)"fromSpectral",
 %  2)"fromFilteredEEG",
@@ -44,21 +44,24 @@ Option.generateH = "fromSpectral_fromRipTimes";
 %  4)"fromSpectra_fromRipTimes", where fromRipTimes causes only the ripple
 %  pattern to derive from global ripples
 
-Option.samplingRate  = [] ;         % For spikes.getSpikeTrain
+Option.samplingRate  = "empty" ;         % For spikes.getSpikeTrain
 Option.spikeBinSize  = 0.1;          % 100 milliseconds
 Option.timesPerTrial = 10;         % 10 times per trial
-Option.winSize       = 0.2;              % size of the window
+Option.winSize       = {[-0.2, 0.2]};              % size of the window
 Option.sourceArea    = "CA1";
 Option.equalWindowsAcrossPatterns = true;    % whether all three patterns have the same #windows
 Option.singleControl = true;                 % whether to use just one control column
 Option.numPartition = 10;                    % ways to split source and target
 usingSingleprediction = true;
+
+winSize = Option.winSize{1};
 %% Shortcut/alias variables to improve readability
 THETA = 1;
 DELTA = 2;
 RIPPLE = 3;
 HPC = 1;
 PFC = 2;
+patternNames = ["theta","delta","ripple"];
 
 %% Mung/Clean the data
 frequenciesPerPattern = [6 14; 0.5 4; 150 200];
@@ -70,7 +73,7 @@ else
     numResult = nPatterns*2;
 end
 
-% find network pattern events
+% Find network pattern events
 if contains(Option.generateH, "fromSpectral")
     load(Option.animal + "spectralBehavior.mat");
     if Option.sourceArea == "CA1"
@@ -80,23 +83,23 @@ if contains(Option.generateH, "fromSpectral")
     end
     
     frequencyAxis = efizz.f;
-    times = efizz.t;
-    H = eventMatrix.generateFromSpectra(times, spectrogram, frequencyAxis,...
+    Htimes = efizz.t;
+    H = eventMatrix.generateFromSpectra(Htimes, spectrogram, frequencyAxis,...
         frequenciesPerPattern);
 elseif contains(Option.generateH, "fromFilteredEEG")
     load(Option.animal + "avgeeg.mat");
-    [H, times] = eventMatrix.generateFromFilteredEEG(avgeeg, ...
-        Option.sourceArea, "patterns",["theta","delta","ripple"],"downsample",100);
+    load(Option.animal + "task01.mat");
+    [H, Hvals, Hnanlocs, Htimes] = eventMatrix.generateFromFilteredEEG(avgeeg, task, ...
+        Option.sourceArea, "patterns",patternNames(1:3),"downsample",10, "ignoreSleep", true);
 end
 
 
 if contains(Option.generateH,"fromRipTimes")
     load(Option.animal + "globalripple01.mat");
-    [ripplecolumntimes,ripplecolumn] = eventMatrix.generateFromRipples(globalripple, 500, ...
+    [ripplecolumntimes,ripplecolumn, nans] = eventMatrix.generateFromRipples(globalripple, 500, ...
         'amplitude_at_riptime', true);
-    samplepoints = interp1(ripplecolumntimes, ripplecolumn, unique(times));
+    samplepoints = interp1(ripplecolumntimes, ripplecolumn, unique(Htimes));
     
-  
     H(:,RIPPLE) = samplepoints';
   
 end
@@ -104,22 +107,36 @@ end
 %%
 %%%%%%%%%%%%%%%% WINDOW SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % windows of network patterns
-cellOfWindows = windows.make(   times, 0.9, H(:,THETA:DELTA), Option.winSize);
-cellOfWindows(3) = windows.make(times, 1,   H(:,RIPPLE),      Option.winSize, ...
+cellOfWindows = windows.make(   Htimes, 0.9, H(:,THETA:DELTA), winSize);
+cellOfWindows(3) = windows.make(Htimes, 1,   H(:,RIPPLE),      winSize, ...
     'threshold', 'raw');
+
+disp(newline);
+disp('Initiale window  creation:')
+disp('--------------------------')
+cellfun(@(x,y)  fprintf("%d windows for %s\n", size(x,1),  y), ...
+    cellOfWindows, cellstr(patternNames(1:3)));
 
 % equalize number of windows across patterns based on input argument
 if Option.equalWindowsAcrossPatterns == true
     cellOfWindows = windows.equalizeWindowsAcrossPatterns(cellOfWindows, nPatterns);
 end
 
+disp(newline);
+disp('Equalized windows        :')
+disp('--------------------------')
+cellfun(@(x,y)  fprintf("%d windows for %s\n", size(x,1),  y), ...
+    cellOfWindows, cellstr(patternNames(1:3)));
+
+%windows.printWindowOverlap(cellOfWindows, patternNames);
+
 %% CONTROL SECTION
 % add control patterns
-Hc = control.generatePatternShuffle(H(:,1:3), times, cellOfWindows);
+Hc = control.generatePatternShuffle(H(:,1:3), Htimes, cellOfWindows);
 
 % add windows of control patterns
-Hc_cellOfWindows = windows.make(times,  0.9, Hc(:,THETA:DELTA), Option.winSize);
-Hc_cellOfWindows(3) = windows.make(times, 1, Hc(:,RIPPLE), Option.winSize, ...
+Hc_cellOfWindows = windows.make(Htimes,  0.9, Hc(:,THETA:DELTA), winSize);
+Hc_cellOfWindows(3) = windows.make(Htimes, 1, Hc(:,RIPPLE), winSize, ...
     'threshold', 'raw');
 
 % clean up control windows: remove each control pattern's window's overlap
@@ -151,14 +168,26 @@ if Option.singleControl
     end
 end
 
+if ~any(contains(patternNames,"control"))
+    patternNames = [patternNames; patternNames+"-control"]';
+    patternNames = patternNames(:)';
+end
+
+disp(newline);
+disp('Equalized control windows :')
+disp('--------------------------')
+cellfun(@(x,y)  fprintf("%d windows for %s\n", size(x,1),  y), ...
+    cellOfWindows, cellstr(patternNames));
+
 %%%%%%%%%%%%%%%% SPIKE SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Getting spikes
 [timeAxis, times_spiking, spikeCountMatrix, spikeRateMatrix, areaPerNeuron] = ...
-    spikes.getSpikeTrainSlow(Option.animal, Option.spikeBinSize, Option.samplingRate);
+    spikes.getSpikeTrain(Option.animal, Option.spikeBinSize,  Option.samplingRate);
 
 % making pattern matrices
 [spikeSampleMatrix, spikeSampleTensor] = ...
-    trialSpikes.generate(spikeCountMatrix, timeAxis, cellOfWindows, Option.timesPerTrial, numResult);
+    trialSpikes.generate(spikeCountMatrix, timeAxis, cellOfWindows, ...
+    Option.timesPerTrial, numResult);
 
 %% Separate spikesSampleMatrix/Tensor by area that neurons are in PFC and neurons that in HPC
 X_pfc = trialSpikes.separateSpikes(spikeSampleMatrix, areaPerNeuron, "PFC");
@@ -179,8 +208,6 @@ Patterns.rankRegress = struct(...
     "B", [], ...
     "B_", [], ...
     "optDimReducedRankRegress", 0, ...
-    "cvl_rankRegress", [], ...
-    "cvLoss_rankRegress", [], ...
     "singlesource_B", [], ...
     "singlesource_optDim",[]);
 Patterns.factorAnalysis = struct(...
@@ -339,7 +366,16 @@ end
 
 %%%%%%%%%%%%%%%% CREATE TABLE AND SAVE RESULTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Prepare table!
-% load("Megatable.mat");
+load("Megatable.mat");
+ winSizes = cell2mat(Option.winSize);
+if numel(Option.winSize{1} == 2) 
+    % otherwise, could not put a cell in a table, and cell2mat creates
+    % varying length of vectors which will be counted as 
+    Option.winSize = "pre: "+winSizes(1)+ " post: "+winSizes(2);
+else
+    Option.winSize =  " post: "+winSizes(1);
+end
+
 Optiontable  = array2table(struct2array(Option));
 optionnames = fieldnames(Option)';
 Optiontable.Properties.VariableNames = optionnames;
@@ -350,10 +386,10 @@ hash = DataHash(Option);
 hash = hash(1:7); % Take the first 7 letters of the hash
 hash = string(hash);
 datestr   = cell(1,1);
-datastr{1} = date();
+datestr{1} = date();
 Filetable = table(hash, datestr);
 
-tablerow = table(Optiontable, Patterntable, Filetable);
+tablerow = table(Optiontable, Filetable);
 
 %% Check and Hash
 if any(contains(TABLE.Filetable.hash, hash))
@@ -368,7 +404,7 @@ end
 %% Save
 save ("Megatable", "TABLE",'-v7.3');
 save(fullfile(datadefine, "hash", hash), ...
-    "Patterns", "Option", '-v7.3')
+    "Patterns", "Option", "H", "cellOfWindows", '-v7.3')
 %%
 % 2. Save table with all factor analysis outputs (we
 % still lack these)

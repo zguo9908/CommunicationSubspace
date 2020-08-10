@@ -1,4 +1,4 @@
-function [times, ripples_are_happening] = generateFromRipples(rippleData, ...
+function [times, ripples_are_happening, nan_indices] = generateFromRipples(rippleData, ...
                                                         samprate, varargin)
 % Input
 % -----
@@ -31,7 +31,7 @@ ripples = rippleData{session};
 first_time_of_the_day = intmax;
 last_time_of_the_day = -1;
 ripple_windows = [];
-
+   
 %% Find the initial and end times of the day
 for iEpoch = 1:numel(ripples)
     if ~isempty(ripples{iEpoch})
@@ -49,7 +49,7 @@ end
 
 %% Creat time axis and initialize output
 times = first_time_of_the_day:1/samprate:last_time_of_the_day;
-ripples_are_happening = zeros(1,length(times));
+ripples_are_happening = nan(1,length(times));
 %% Create one list of ripples, all epochs
 for iEpoch = 1:numel(ripples)
     if ~isempty(ripples{iEpoch})
@@ -75,4 +75,5 @@ for i = 1:length(times)
     end
 end
 
+nan_indices = isnan(ripples_are_happening);
 end

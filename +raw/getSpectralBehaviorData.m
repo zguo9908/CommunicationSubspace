@@ -146,7 +146,7 @@ for animal = animalList
         end
         load(cgramc_file)
         if isNew
-       cgramc = cgramcnew;
+        cgramc = cgramcnew;
         end
         data = ffend(cgramc);
         data.orig.t    = data.t;

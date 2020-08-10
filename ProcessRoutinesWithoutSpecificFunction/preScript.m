@@ -1,4 +1,4 @@
-animalname = "JS12"; %% change here
+animalname = "JS15"; %% change here
 animalpath = ("C:\Users\BrainMaker\commsubspace\SingleDayExpt\"+animalname+"_direct");
 cd (animalpath)
 
@@ -7,7 +7,7 @@ animalinfo = animaldef(animalname);
 
 % getSpectralBehaviorData
 animal = {animalname};
-data = raw.getSpectralBehaviorData(animal);
+data = raw.getSpectralBehaviorData(animal, "epochtype", "run");
 save(animalname+'spectralBehavior.mat','-struct','data');
 % save(animal+"spectralBehavior","data");
 

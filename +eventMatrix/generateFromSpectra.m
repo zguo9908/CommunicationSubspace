@@ -1,4 +1,4 @@
-function H = generateFromSpectra(times, spectrogram, frequencyAxis, ...
+function [H, Hvals, Hnanlocs, times] = generateFromSpectra(times, spectrogram, frequencyAxis, ...
                                  frequenciesPerPattern, varargin)
 
     % GENERATEH generates H matrix from lfp data
@@ -68,4 +68,6 @@ function H = generateFromSpectra(times, spectrogram, frequencyAxis, ...
         curr_times = times(frequency_subset);
         possible_times{i} = setdiff(times,curr_times); % exclude times for the next pattern
     end      
-end
+
+Hvals = H;
+Hnanlocs = ones(size(H));

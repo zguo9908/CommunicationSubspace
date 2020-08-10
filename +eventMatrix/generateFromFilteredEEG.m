@@ -1,4 +1,4 @@
-function [H, times] = generateFromFilteredEEG(avgEEGStruct, brainArea, varargin)
+function [H, Hvals, Hnanlocs, times] = generateFromFilteredEEG(avgEEGStruct, task, brainArea, varargin)
 
 % this function genegrates event windows based on averaged eeg files taking
 % into consideration specified phase windows
@@ -11,9 +11,10 @@ function [H, times] = generateFromFilteredEEG(avgEEGStruct, brainArea, varargin)
 
 %% Parse optional arguments
 ip = inputParser;
-ip.addParameter('phaseWindow', []); % Window of possible phases to accept (if not empty)
+ip.addParameter('phaseWindow', [0-pi/4 0+pi/4]); % Window of possible phases to accept (if not empty)
 ip.addParameter('downsample',  []); % How much (if not empty) to downsample data
 ip.addParameter('patterns',    ["theta","delta","ripple"]); % Which patterns in avgEEGStruct to use
+ip.addParameter('ignoreSleep', true);
 ip.parse(varargin{:});
 opt = ip.Results;
 
@@ -27,14 +28,37 @@ else
     indices = nd.indicesMatrixForm(avgEEGStruct);
 end
 
+
+%% get epochs with running sessions
+
+sleepSessions = [];
+
+if opt.ignoreSleep 
+    task = task{1};
+    
+    for i = 1:numel(task)
+        if task{i}.type == "sleep"
+            sleepSessions = [sleepSessions, i];
+        end
+    end
+% else, there will be no sleepSessions, and all the structs will be
+% examined.
+end 
+
 %% Iteratitvely build H
-H = [];
-times = [];
+Hvals = [];
+Hnanlocs = [];
 nPatterns = numel(opt.patterns);
+
 for iPattern = 1:nPatterns
     patternH     = [];
-  
+    patternToNan = [];
+    times = []; % Do not move this  line: If placed above for iPattern = 1:nPatterns, creates a bug
+   
     for index = indices'
+        if ismember(index(2), sleepSessions)
+            continue
+        end
         
         I = num2cell(index);
         singleStruct = avgEEGStruct( I{:} );
@@ -57,17 +81,23 @@ for iPattern = 1:nPatterns
         end
 
         % SELECT PHASES?
+        toNan = zeros(1,length(eegData));
         if ~isempty(opt.phaseWindow) % IF A PHASE WINDOW IS GIVEN BY THE USER, USE IT
             toNan = ~eventMatrix.inPhaseWindows(double(eegData(:,PHASE))/10000, ...
                 opt.phaseWindow);
-            eegData(toNan,:)   = nan;
+%             eegData(toNan,:)   = nan;
         end
         
         patternH = [patternH;     eegData(:,AMP)];
+        patternToNan = [patternToNan;  toNan];
         times    = [times; singleTime(:)];
     end
+    
     % Build the data
-    H     = [H patternH]; 
+    Hvals     = [Hvals patternH]; 
+    Hnanlocs  = [Hnanlocs patternToNan];
 end
+
+H =  Hvals .* Hnanlocs;
 
 times = times';
