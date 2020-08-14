@@ -54,7 +54,7 @@ end
 times = first_time_of_the_day:1/samprate:last_time_of_the_day;
 if ~isempty(opt.ripple_to_replace) && ~isempty(opt.original_time_axis)
     H = interp1(opt.original_time_axis,opt.ripple_to_replace,times);
-    Hvals = H; % this would create NaNs in Hvals
+    Hvals = H;
 else
     H = nan(1,length(times));
     Hvals = zeros(1,length(times));
@@ -72,20 +72,19 @@ for iEpoch = 1:numel(ripples)
 end
 
 %%  Mark each time in the axis
-for i = 1:length(times)
-    ripples_that_are_in_the_past = ripple_windows(:,2) < times(i);
+for j = 1:size(ripple_windows,1)
+    %ripples_that_are_in_the_past = ripple_windows(:,2) < times(i);
     % stop searching when the end time surpasses the time point interested in
-    ripple_windows(ripples_that_are_in_the_past,:) = [];
-    for j = 1:size(ripple_windows,1)
+    %ripple_windows(ripples_that_are_in_the_past,:) = [];
         % first qualified window encountered
-        if times(i)>=ripple_windows(j,1) && times(i) < ripple_windows(j,2)
-            if opt.amplitude_at_riptime == false
-                H(i) = 1;
-            else
-                H(i) = ripple_windows(j,3);
-            end
-            break;
+    filter = times >= ripple_windows(j,1) & times < ripple_windows(j,2); % RY instead of for-looping times, we vectorize here for speed
+    if any(filter)
+        if opt.amplitude_at_riptime == false
+            H(filter) = 1;
+        else
+            H(filter) = ripple_windows(j,3);
         end
+        break;
     end
 end
 

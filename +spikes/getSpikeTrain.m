@@ -119,12 +119,16 @@ end
 start_time = intmax;
 end_time = -1;
 for i = 1:num_cells
+    if isempty(times_spiking{i})
+        continue
+    end
+    
     try
         curr_start = times_spiking{i}(1);
+        curr_end = times_spiking{i}(end);
     catch
         keyboard
     end
-    curr_end = times_spiking{i}(end);
     
     if curr_start<start_time
         start_time = curr_start;

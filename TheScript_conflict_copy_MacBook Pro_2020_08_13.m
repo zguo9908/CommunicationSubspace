@@ -4,7 +4,7 @@ addpath(genpath(pwd)) % all folders in utils added, including semedo code
 
 
 if ~exist('animal','var')
-    animal = "ZT2";
+    animal = "JS15";
 end
 addpath(genpath(pwd)) % all folders in utils added, including semedo code
 
@@ -35,8 +35,8 @@ Option.generateFromRipTimes = true; % Whether to replace H(:, ripple) as
 % pattern determined by global ripple
 % rimes.
 Option.animal    = animal;
-%Option.generateH = "fromFilteredEEG_fromRipTimes";
-Option.generateH = "fromSpectral_fromRipTimes";
+Option.generateH = "fromFilteredEEG_fromRipTimes";
+% Option.generateH = "fromSpectral_fromRipTimes";
 % This option field have these possibilities:
 %  1)"fromSpectral",
 %  2)"fromFilteredEEG",
@@ -84,7 +84,7 @@ if contains(Option.generateH, "fromSpectral")
     
     frequencyAxis = efizz.f;
     Htimes = efizz.t;
-    [H, Hvals, Hnanlocs, Htimes] = eventMatrix.generateFromSpectra(Htimes, spectrogram, frequencyAxis,...
+    H = eventMatrix.generateFromSpectra(Htimes, spectrogram, frequencyAxis,...
         frequenciesPerPattern);
 elseif contains(Option.generateH, "fromFilteredEEG")
     load(Option.animal + "avgeeg.mat");
@@ -92,20 +92,16 @@ elseif contains(Option.generateH, "fromFilteredEEG")
     [H, Hvals, Hnanlocs, Htimes] = eventMatrix.generateFromFilteredEEG(avgeeg, task, ...
         Option.sourceArea, "patterns",patternNames(1:3),"downsample",10, "ignoreSleep", true);
 end
-%%
 
+%%
 if contains(Option.generateH,"fromRipTimes")
     load(Option.animal + "globalripple01.mat");
    
-    [ripplecolumntimes,Hripplecolumn, Hripplenans, Hripplevals, original] = ...
-        eventMatrix.generateFromRipples_new(globalripple,  Hvals(:,RIPPLE), ...
-                                            Htimes);
-                                      
-    if original
-        H(:,RIPPLE) = Hripplecolumn;
-        Hvals(:,RIPPLE) = Hripplevals;
-        Hnanlocs(:,RIPPLE) = Hripplenans;
-    else
+    [ripplecolumntimes,Hripplecolumn, Hripplenans, Hripplevals] = ...
+        eventMatrix.generateFromRipples(globalripple, 500, ...
+                                       'amplitude_at_riptime', true,...
+                                       'ripple_to_replace', Hvals(:,RIPPLE),... RY: Hvals, not H here for obvious reasons: you  want the original ripple band activity
+                                       'original_time_axis', Htimes);
                                    
     downsampleAxis = linspace(ripplecolumntimes(1),ripplecolumntimes(end),...
                               length(Htimes));
@@ -113,7 +109,6 @@ if contains(Option.generateH,"fromRipTimes")
     Hvals_interped = interp1(ripplecolumntimes, Hripplevals, downsampleAxis);
     
     H(:,RIPPLE) = samplepoints';
-    end
   
 end
 
@@ -403,15 +398,15 @@ Patterntable = array2table( Patterns(:)');
 hash = DataHash(Option);
 hash = hash(1:7); % Take the first 7 letters of the hash
 hash = string(hash);
-% datestr   = cell(1,1);
-% datestr{1} = date();
+datestr   = cell(1,1);
+datestr{1} = date();
+Filetable = table(hash, datestr);
 
-Hash = hash;
-tablerow = table(Optiontable, Hash);
+tablerow = table(Optiontable, Filetable);
 
 %% Check and Hash
-if any(contains(TABLE.Hash, hash))
-    TABLE(contains(TABLE.Hash, hash), :) = tablerow;
+if any(contains(TABLE.Filetable.hash, hash))
+    TABLE(contains(TABLE.Filetable.hash, hash), :) = tablerow;
     disp("already computed before, rehashing to the same location");
     % New options:    Append row
 else

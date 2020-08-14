@@ -1,4 +1,4 @@
-animalname = "JS15"; %% change here
+animalname = "JS21"; %% change here
 animalpath = ("C:\Users\BrainMaker\commsubspace\SingleDayExpt\"+animalname+"_direct");
 cd (animalpath)
 

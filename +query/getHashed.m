@@ -47,6 +47,7 @@ for q = 1:length(mat)
     
     allOptionsFulfilled = true;
     
+    % examine each corresponding option fields
     for j = 1:numOptionsToExamine
         currFieldName = optionsToExamine(2*j);
         currFieldContent = currFieldName{:};

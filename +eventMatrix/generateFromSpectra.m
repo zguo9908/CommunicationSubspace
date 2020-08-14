@@ -1,7 +1,7 @@
 function [H, Hvals, Hnanlocs, times] = generateFromSpectra(times, spectrogram, frequencyAxis, ...
                                  frequenciesPerPattern, varargin)
 
-    % GENERATEH generates H matrix from lfp data
+    % generates H matrix from lfp data
     
     % Inputs
     % ------
@@ -23,6 +23,10 @@ function [H, Hvals, Hnanlocs, times] = generateFromSpectra(times, spectrogram, f
     % ------
     % H : T x N matrix
     %   Average amount of power for the N patterns/bands for T times.
+    % Hvals: same as H to keep things consistent with other generateH
+    % functions
+    % Hnanlocs: encoding where the nans are with nan and the others with 1
+    
     ip = inputParser;
     ip.addParameter('controlType','none', ... % name of an optional input and it's default value
         @(x) ischar(x) || isstring(x)); % test run on optional input (if it fails this test, it triggers an error)

@@ -39,11 +39,15 @@ for iPattern = progress(1:numResult, 'Title', 'Patterns')
         currstop  = currPattern(i,2);
         
         logicalIndexes = timeAxis>currstart & timeAxis<=currstop;
+        
+%         if sum(logicalIndexes == 0)
+%             continue
+%         end
+        
         t = timeAxis(logicalIndexes);
         %t_index = find(logicalIndexes);
         
         interval = (currstop-currstart)/samplesPerTrial;
-        %winSize = 0.3;
         
         %Generte query points
         tq(1) = currstart+interval/2;

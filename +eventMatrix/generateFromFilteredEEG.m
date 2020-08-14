@@ -4,10 +4,15 @@ function [H, Hvals, Hnanlocs, times] = generateFromFilteredEEG(avgEEGStruct, tas
 % into consideration specified phase windows
 
 % avgEEGStruct: eeg file containing filtered and averaged eeg
+% task: the taskfile information so that sleep sessions can be ignored
 % brainArea: the area interested in (CA1)
 
 % outputs:
 % H: the event matrix (with specified rhythm patterns)
+% Hvals: version of H where instead of nanning out the rhythm not
+% happening, their actual values are used
+% Hnanlocs: where the nans are in the final H matrix
+% times: the time axis
 
 %% Parse optional arguments
 ip = inputParser;
@@ -93,9 +98,12 @@ for iPattern = 1:nPatterns
         times    = [times; singleTime(:)];
     end
     
+    patternNanlocs = ones(1,length(patternToNan));
+    patternNanlocs(patternToNan==1) = nan;
+        
     % Build the data
     Hvals     = [Hvals patternH]; 
-    Hnanlocs  = [Hnanlocs patternToNan];
+    Hnanlocs  = [Hnanlocs patternNanlocs'];
 end
 
 H =  Hvals .* Hnanlocs;
