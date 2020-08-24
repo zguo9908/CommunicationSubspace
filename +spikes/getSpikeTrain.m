@@ -139,7 +139,7 @@ for i = 1:num_cells
     end
 end
 
-if nargin == 3 && samplingRate~="empty" %RY added new option for sampling rate + window size, copy-pasting some of your code and modifying
+if nargin == 3 && ~isempty(samplingRate) %RY added new option for sampling rate + window size, copy-pasting some of your code and modifying
     
     samplingPeriod = 1/samplingRate;
     timeAxis = start_time:samplingPeriod:end_time;

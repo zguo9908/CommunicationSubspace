@@ -53,12 +53,12 @@ function data = getSpectralBehaviorData(animalList, varargin)
 % Parse optional keyword-arg pairs
 % --------------------------------
 
-isNew = true;
+isNew = false;
 ip = inputParser;
 ip.addParameter('epochType', 'run', @(x) ischar(x) || isstring(x))
-ip.addParameter('fields', {'wpli','S1','S2','C'}); 
+ip.addParameter('fields', {'C','wpli','S1','S2'}); 
 ip.addParameter('debug', false)
-ip.addParameter('subsample', false);
+ip.addParameter('subsample', false); 
 ip.addParameter('removeInterepochPeriod', false);
 ip.addParameter('removeInteranimalPeriod', false);
 ip.addParameter('storeDatBeforeSubsamp', false);
@@ -135,6 +135,7 @@ for animal = animalList
             end
 
         end
+        cgramfile = "cgramc";
         temp = join([animal{1} cgramfile sprintf('-%02d-%02d.mat', dayepoch)]);
         cgramc_file = strrep(temp, ' ', '');
         if ~exist(cgramc_file, 'file')

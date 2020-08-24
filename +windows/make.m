@@ -1,4 +1,4 @@
- function [cellOfWindows] = makeWindows(times, threshold, H, winSize, varargin)
+ function [cellOfWindows] = make(times, threshold, H, winSize, varargin)
 % H: m*n matrix - m is number powers taken (aligned to times, same
 %    length as times) and n is the number of rhythms we are interested in
 %

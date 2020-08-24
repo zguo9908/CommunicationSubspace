@@ -1,4 +1,4 @@
-function [H, Hvals, Hnanlocs, times] = generateFromFilteredEEG(avgEEGStruct, task, brainArea, varargin)
+function [H, Hvals, Hnanlocs, times] = generateFromFilteredEEG(avgEEGStruct, brainArea, varargin)
 
 % this function genegrates event windows based on averaged eeg files taking
 % into consideration specified phase windows
@@ -19,7 +19,7 @@ ip = inputParser;
 ip.addParameter('phaseWindow', [0-pi/4 0+pi/4]); % Window of possible phases to accept (if not empty)
 ip.addParameter('downsample',  []); % How much (if not empty) to downsample data
 ip.addParameter('patterns',    ["theta","delta","ripple"]); % Which patterns in avgEEGStruct to use
-ip.addParameter('ignoreSleep', true);
+ip.addParameter('sleepSessions', []);
 ip.parse(varargin{:});
 opt = ip.Results;
 
@@ -36,16 +36,10 @@ end
 
 %% get epochs with running sessions
 
-sleepSessions = [];
-
-if opt.ignoreSleep 
-    task = task{1};
-    
-    for i = 1:numel(task)
-        if task{i}.type == "sleep"
-            sleepSessions = [sleepSessions, i];
-        end
-    end
+if ~isempty(opt.sleepSessions)
+    sleepSessions = opt.sleepSessions;
+else
+    sleepSessions = [];
 % else, there will be no sleepSessions, and all the structs will be
 % examined.
 end 

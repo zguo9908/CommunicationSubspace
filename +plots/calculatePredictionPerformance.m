@@ -26,8 +26,9 @@ end
 
 nan_indices = find(isnan(performance));
 
-indices = intersect(find(~isinf(performance)), find(~isnan(performance)));
+indices = intersect(find(performance>0), find(~isnan(performance)));
 
 mean_performance = mean(performance(indices));
+
 end
 

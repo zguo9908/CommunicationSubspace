@@ -72,7 +72,7 @@ else
 %         end
 %     end
     
-    times = first_time_of_the_day:1/samprate:last_time_of_the_day;
+    times = first_time_of_the_day:1/opt.samprate:last_time_of_the_day;
     
     temp = interp1(original_time, ripple_to_replace, times);
     

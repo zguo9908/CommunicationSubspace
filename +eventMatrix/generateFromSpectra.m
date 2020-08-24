@@ -69,6 +69,9 @@ function [H, Hvals, Hnanlocs, times] = generateFromSpectra(times, spectrogram, f
         % we need to transpose 
         H(:,i) = (mean(result))';
         
+        if any(isnan(H(:,i)))
+            keyboard
+        end
         curr_times = times(frequency_subset);
         possible_times{i} = setdiff(times,curr_times); % exclude times for the next pattern
     end      

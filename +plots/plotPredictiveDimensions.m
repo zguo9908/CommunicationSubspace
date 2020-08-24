@@ -36,7 +36,7 @@ errorbarplot = errorbar(x, y, e);
 
 errorbarplot.Color = opt.color;
 
-xlabel('Number of predictive dimensions')
-ylabel('Predictive performance')
+xlabel('# predictive dimensions')
+ylabel('Performance')
 
 end

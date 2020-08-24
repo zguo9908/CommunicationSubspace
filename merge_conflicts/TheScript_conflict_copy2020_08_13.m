@@ -1,16 +1,10 @@
-% %% LOOPS
-% winSizes = {{-0.15, 0.15}, {-0.2, 0.2}};
-% for i = numel(winSizes)
-%     currParam = winSizes{i};
-
-%%
 clear
 %% Paths
 addpath(genpath(pwd)) % all folders in utils added, including semedo code
 
 
 if ~exist('animal','var')
-    animal = "JS15";
+    animal = "JS21";
 end
 addpath(genpath(pwd)) % all folders in utils added, including semedo code
 
@@ -21,24 +15,28 @@ elseif ismac
     paths(1) = "/Volumes/sharespace-commsub/data";
     paths(2) = "~/Data/commsubspace";
 end
-% Set data paths for that computer
+% Set data paths for that computer 
 arrayfun(@(path) addpath(genpath(path)), paths);
-% ---------- Add paths for specific users ------------------------------
+% % ---------- Add paths for specific users ------------------------------
 % addpath(genpath(datadef(user))); % this line throws an error for pc
-
-addpath(...
-    fullfile(codedefine,"Shared"));
-addpath(genpath(fullfile(codedefine, "Shared", "utils")));
-% -----------------------------------------------------------------------
-% Script parameters
+%
+% addpath(...
+%     fullfile(codedefine,"Shared"));
+% addpath(genpath(...
+%     fullfile(codedefine, "Shared", "utils")...
+%     ));
+% % -----------------------------------------------------------------------
+%% Script parameters
 % -----------------------------------------------------------------
 Option = struct();
 
 Option.generateFromRipTimes = true; % Whether to replace H(:, ripple) as
-% determined by spectral power with pattern determined by global ripple
+% determined by spectral power with
+% pattern determined by global ripple
+% rimes.
 Option.animal    = animal;
-% Option.generateH = "fromSpectra "+" fromRipTimes";
-Option.generateH = "fromCoherence "+" fromRipTimes";
+Option.generateH = "fromFilteredEEG_fromRipTimes";
+% Option.generateH = "fromSpectral_fromRipTimes";
 % This option field have these possibilities:
 %  1)"fromSpectral",
 %  2)"fromFilteredEEG",
@@ -46,31 +44,27 @@ Option.generateH = "fromCoherence "+" fromRipTimes";
 %  4)"fromSpectra_fromRipTimes", where fromRipTimes causes only the ripple
 %  pattern to derive from global ripples
 
-Option.samplingRate  = [] ;              % For spikes.getSpikeTrain, nan if not given
-Option.spikeBinSize  = 0.1;               % 100 milliseconds
-Option.timesPerTrial = 10;                % 10 times per trial
-Option.winSize       = {[-0.15, 0.15]};     % size of the window
-Option.sourceArea    = "CA1";
+Option.samplingRate  = "empty" ;         % For spikes.getSpikeTrain
+Option.spikeBinSize  = 0.1;          % 100 milliseconds
+Option.timesPerTrial = 10;         % 10 times per trial
+Option.winSize       = {[-0.15, 0.15]};              % size of the window
+Option.sourceArea    = "PFC";
 Option.equalWindowsAcrossPatterns = true;    % whether all three patterns have the same #windows
-Option.singleControl = false;                 % whether to use just one control column
+Option.singleControl = true;                 % whether to use just one control column
 Option.numPartition = 10;                    % ways to split source and target
-% usingSingleprediction = true;
+usingSingleprediction = true;
+
 winSize = Option.winSize{1};
 %% Shortcut/alias variables to improve readability
 THETA = 1;
 DELTA = 2;
 RIPPLE = 3;
-if Option.sourceArea == "CA1"
-    HPC = 1;
-    PFC = 2;
-else
-    PFC = 1;
-    HPC = 2;
-end
+HPC = 1;
+PFC = 2;
 patternNames = ["theta","delta","ripple"];
 
 %% Mung/Clean the data
-frequenciesPerPattern = [6 10; 0.5 4; 150 200];
+frequenciesPerPattern = [6 14; 0.5 4; 150 200];
 [nPatterns,~] = size(frequenciesPerPattern);
 
 if Option.singleControl == true
@@ -80,7 +74,7 @@ else
 end
 
 % Find network pattern events
-if contains(Option.generateH, "fromSpectra")
+if contains(Option.generateH, "fromSpectral")
     load(Option.animal + "spectralBehavior.mat");
     if Option.sourceArea == "CA1"
         spectrogram   = efizz.S1;
@@ -94,37 +88,30 @@ if contains(Option.generateH, "fromSpectra")
         frequenciesPerPattern);
 elseif contains(Option.generateH, "fromFilteredEEG")
     load(Option.animal + "avgeeg.mat");
-    [~, sleepSessions] = getRunningSessions(Option.animal);
-    [H, Hvals, Hnanlocs, Htimes] = eventMatrix.generateFromFilteredEEG(avgeeg, ...
-        Option.sourceArea, "patterns",patternNames(1:3),"downsample",10, "sleepSessions", sleepSessions);
-elseif contains(Option.generateH, "fromCoherence")
-   load(Option.animal + "spectralBehavior.mat");
-   spectrogram = efizz.C;
-    frequencyAxis = efizz.f;
-    Htimes = efizz.t;
-    [H, Hvals, Hnanlocs, Htimes] = eventMatrix.generateFromSpectra(Htimes, spectrogram, frequencyAxis,...
-        frequenciesPerPattern);
-else
-    error("Core method for deriving the event matrix is not recognized");
-    end
-%%
+        [~, sleepSessions] = getRunningSessions(Option.animal);
 
+    [H, Hvals, Hnanlocs, Htimes] = eventMatrix.generateFromFilteredEEG(avgeeg, ...
+        Option.sourceArea, "patterns",patternNames(1:3),"downsample",1, "sleepSessions", true);
+end
+
+%%
 if contains(Option.generateH,"fromRipTimes")
     load(Option.animal + "globalripple01.mat");
    
-    [~, H(:,RIPPLE), Hnanlocs(:,RIPPLE), Hvals(:,RIPPLE), minRippleThreshold, original] = ...
+    [~, H(:,RIPPLE), Hripplenans, Hvals(:,RIPPLE), minRippleThreshold, original] = ...
         eventMatrix.generateFromRipples(globalripple, ...
                                        'amplitude_at_riptime', true,...
                                        'rippleBand', Hvals(:,RIPPLE),... RY: Hvals, not H here for obvious reasons: you  want the original ripple band activity
                                        'rippleBandTime', Htimes);
-
+    
+  
 end
 
 %%
 %%%%%%%%%%%%%%%% WINDOW SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % windows of network patterns
-cellOfWindows = windows.make(   Htimes, 0.9, H(:,THETA:DELTA), winSize);
-cellOfWindows(3) = windows.make(Htimes, 1,   H(:,RIPPLE),      winSize, ...
+cellOfWindows = windows.make(   Htimes, 0.9, Hvals(:,THETA:DELTA), winSize);
+cellOfWindows(3) = windows.make(Htimes, minRippleThreshold,  Hvals(:,RIPPLE),      winSize, ...
     'threshold', 'raw');
 
 disp(newline);
@@ -148,7 +135,7 @@ cellfun(@(x,y)  fprintf("%d windows for %s\n", size(x,1),  y), ...
 
 %% CONTROL SECTION
 % add control patterns
-Hc = control.generatePatternShuffle(H(:,1:3), Htimes, cellOfWindows);
+Hc = control.generatePatternShuffle(Hvals(:,1:3), Htimes, cellOfWindows);
 
 % add windows of control patterns
 Hc_cellOfWindows = windows.make(Htimes,  0.9, Hc(:,THETA:DELTA), winSize);
@@ -158,7 +145,8 @@ Hc_cellOfWindows(3) = windows.make(Htimes, 1, Hc(:,RIPPLE), winSize, ...
 % clean up control windows: remove each control pattern's window's overlap
 for pattern = 1:nPatterns
     curr = windows.removeOverlapsBetweenPattern(...
-     cell2mat(cellOfWindows(:,pattern)), cell2mat(Hc_cellOfWindows(:,pattern)));
+        cell2mat(cellOfWindows(:,pattern)), ...
+        cell2mat(Hc_cellOfWindows(:,pattern)));
     Hc_cellOfWindows{pattern} = curr;
 end
 
@@ -169,7 +157,7 @@ cellOfWindows(nPatterns+1:nPatterns*2) = Hc_cellOfWindows;
 
 % Equalize trials/windows for each pair of patttern-controlPattern
 [cellOfWindows, warnedEmptyControls] =...
-    control.equalizePatternControl(nPatterns, cellOfWindows);
+                  control.equalizePatternControl(nPatterns, cellOfWindows);
 
 % pick control pattern that actually contains controls, would break if all
 % three are empty...
@@ -247,29 +235,19 @@ end
 Patterns = repmat(Patterns, [Option.numPartition,2,numResult]);
 
 for iPartition = 1:Option.numPartition
-    [X_source(iPartition,:),X_target(iPartition,:,:), nSource, nTarget,...
-    index_source, index_target] = trialSpikes.splitSourceTarget...
-                    (2, numResult, X_hpc, X_pfc, 'specifiedSource', "CA1");
+    [X_source(iPartition,:),X_target(iPartition,:,:), nSource, nTarget] ...
+        = trialSpikes.splitSourceTarget...
+                 (2, numResult, X_hpc, X_pfc, 'specifiedSource', "CA1");
     
     for i = 1:numResult % "expected ONE OUTPUT from dot indexing"
-        
-        if Option.sourceArea == "CA1"
-            Patterns(iPartition,HPC,i).directionality = "hpc-hpc";
-            Patterns(iPartition,PFC,i).directionality = "hpc-pfc";
-        else
-            Patterns(iPartition,HPC,i).directionality = "pfc-hpc";
-            Patterns(iPartition,PFC,i).directionality = "pfc-pfc";
-        end
+        Patterns(iPartition,HPC,i).directionality = "hpc-hpc";
         Patterns(iPartition,HPC,i).X_source = X_source{iPartition,:,i};
-        Patterns(iPartition,HPC,i).index_source = index_source{iPartition,:,i};
         Patterns(iPartition,HPC,i).X_target = X_target{iPartition,1,i};
-        Patterns(iPartition,HPC,i).index_target = index_target{iPartition,1,i};
         Patterns(iPartition,HPC,i).name = patternNames(i);
         
+        Patterns(iPartition,PFC,i).directionality = "hpc-pfc";
         Patterns(iPartition,PFC,i).X_source = X_source{iPartition,:,i};
-        Patterns(iPartition,PFC,i).index_source = index_source{iPartition,:,i};
         Patterns(iPartition,PFC,i).X_target = X_target{iPartition,2,i};
-        Patterns(iPartition,PFC,i).index_target = index_target{iPartition,2,i};
         Patterns(iPartition,PFC,i).name = patternNames(i);
     end
 end
@@ -278,58 +256,58 @@ end
 
 numDimsUsedForPrediction = 1:nTarget;
 for p = 1:Option.numPartition
-    for i = 1:numResult
+for i = 1:numResult
+    
+    B_singleprediction = cell(1,nSource);
+    dim_singleprediction = cell(1,nSource);
+    
+    % Number of cross validation folds.
+    cvNumFolds = 10;
+    cvOptions = statset('crossval');
+    regressMethod = @ReducedRankRegress;
+    cvFun = @(Ytrain, Xtrain, Ytest, Xtest) RegressFitAndPredict...
+        (regressMethod, Ytrain, Xtrain, Ytest, Xtest, ...
+        numDimsUsedForPrediction, 'LossMeasure', 'NSE');
+    
+    curr_source = (Patterns(p,1,i).X_source)';
+    
+    for j = [HPC, PFC]
         
-        B_singleprediction = cell(1,nSource);
-        dim_singleprediction = cell(1,nSource);
-        
-        % Number of cross validation folds.
-        cvNumFolds = 10;
-        cvOptions = statset('crossval');
-        regressMethod = @ReducedRankRegress;
-        cvFun = @(Ytrain, Xtrain, Ytest, Xtest) RegressFitAndPredict...
-            (regressMethod, Ytrain, Xtrain, Ytest, Xtest, ...
-            numDimsUsedForPrediction, 'LossMeasure', 'NSE');
-        
-        curr_source = (Patterns(p,1,i).X_source)';
-        
-        for j = [HPC, PFC]
-            
-            curr_target = (X_target{p,j,i})';
-            [   Patterns(p,j,i).rankRegress.cvl, ...
-                Patterns(p,j,i).rankRegress.cvLoss,...
-                Patterns(p,j,i).rankRegress.optDimReducedRankRegress,...
-                Patterns(p,j,i).rankRegress.B,...
-                Patterns(p,j,i).rankRegress.B_,...
-                Patterns(p,j,i).rankRegress.V] ...
-                = rankRegressRoutine(cvFun, cvNumFolds, ...
-                cvOptions, curr_target, curr_source, ...
-                numDimsUsedForPrediction);
-%             try
-                % Single neuron prediction
-                for k = 1:nSource
-                    curr_singlesource = curr_source(:,j);
-                    if clean.zeroFiring(curr_singlesource)
-                        continue;
-                    end
-                    [~,~, ...
-                        dim_singleprediction{k}, ...
-                        B_singleprediction{k},~,~] = ...
-                        rankRegressRoutine(cvFun, cvNumFolds, ...
-                        cvOptions,curr_target, ...
-                        curr_singlesource,...
-                        numDimsUsedForPrediction);
+        curr_target = (X_target{p,j,i})';
+        [   Patterns(p,j,i).rankRegress.cvl, ...
+            Patterns(p,j,i).rankRegress.cvLoss,...
+            Patterns(p,j,i).rankRegress.optDimReducedRankRegress,...
+            Patterns(p,j,i).rankRegress.B,...
+            Patterns(p,j,i).rankRegress.B_,...
+            Patterns(p,j,i).rankRegress.V] ...
+            = rankRegressRoutine(cvFun, cvNumFolds, ...
+            cvOptions, curr_target, curr_source, ...
+            numDimsUsedForPrediction);
+        try
+            % Single neuron prediction
+            for k = 1:nSource
+                curr_singlesource = curr_source(:,j);
+                if clean.zeroFiring(curr_singlesource)
+                    continue;
                 end
-                Patterns(p,j,i).rankRegress.singlesource_B = B_singleprediction;
-                
-                Patterns(p,j,i).rankRegress.singlesource_optDim = ...
-                    dim_singleprediction;
-%             catch
-%                 usingSingleprediction = false;
-%             end
+                [~,~, ...
+                    dim_singleprediction{k}, ...
+                    B_singleprediction{k},~,~] = ...
+                    rankRegressRoutine(cvFun, cvNumFolds, ...
+                    cvOptions,curr_target, ...
+                    curr_singlesource,...
+                    numDimsUsedForPrediction);
+            end
+            Patterns(p,j,i).rankRegress.singlesource_B = B_singleprediction;
+            
+            Patterns(p,j,i).rankRegress.singlesource_optDim = ...
+                dim_singleprediction;
+        catch
+            usingSingleprediction = false;
         end
-        
     end
+    
+end
 end
 
 
@@ -337,71 +315,107 @@ end
 %%%%%%%%%%%%%%%% FACTOR ANALYSIS SECTION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 doFactorAnalysis = false;
 if doFactorAnalysis
-    q = 1: nTarget-1;
+    
+    % How many dimensions did we maximally have for Bdims
+    RR=[Patterns.rankRegress];
+    maxBdim = max([RR.optDimReducedRankRegress]);
+    minBdim = min([RR.optDimReducedRankRegress]);
+    
+    %  Find factor analytic dimension
     cvNumFolds = 10;
     cvOptions = statset('crossval');
-    for p = 1:Option.numPartition
-        for i = 1:numResult
-            for j = [HPC, PFC]
-                disp("processing the "+p+" partition and the "+i+" pattern"+j)
-                currSource = Patterns(p,j,i).X_source';
-                cvLoss = CrossValFa(currSource, q, cvNumFolds, cvOptions);
-                qOpt =  FactorAnalysisModelSelect(cvLoss, q);
-                Patterns(p,j,i).factorAnalysis.cvLoss = cvLoss;
-                Patterns(p,j,i).factorAnalysis.qOpt = qOpt
-                [Patterns(p,j,i).factorAnalysis.Z, ...
-                 Patterns(p,j,i).factorAnalysis.U,...
-                 Patterns(p,j,i).factorAnalysis.Q] = ...
-                 ExtractFaLatents(X_source', qOpt);
-            end
-        end
+    cvOptions.UseParallel = true;
+    fa_gpuState = true;
+    if fa_gpuState
+        reset(gpuDevice()) %if the GPU has stuff in memory, clear the device, so we have a blank slate!
     end
+    if cvOptions.UseParallel && fa_gpuState
+        parpool('local', 2); %  4   workers with gpu  crashes
+    end
+    
+    
+    for i = progress(1:nPatterns, 'Title', 'FA over patterns')
+        
+        
+        curr_source = X_source{i};
+        
+        
+        curr_pfc = X_pfc{i};
+        
+        q_pfc = 1:max(nPFCneurons,maxBdim);
+        q_hpc = 1:max(nHPCneurons,maxBdim);
+        
+        tic % start timing how long this takes
+        cvLoss_pfc= CrossValFa(curr_pfc, q_pfc, cvNumFolds, cvOptions, ...
+            'gpu', fa_gpuState, 'speedup', false);
+        disp(cvLoss_pfc);
+        toc % print how long it took
+        
+        qOpt_pfc = FactorAnalysisModelSelect(cvLoss, q_pfc);
+        
+        tic;
+        cvLoss_hpc= CrossValFa(curr_hpc, q_hpc, cvNumFolds, cvOptions, ...
+            'gpu', fa_gpuState, 'speedup', false);
+        qOpt_hpc = FactorAnalysisModelSelect(cvLoss, q_hpc);
+        toc;
+        
+        Pattern(1,i).factorAnalysis.qOpt_hpc = qOpt_hpc;
+        Pattern(2,i).factorAnalysis.qOpt_pfc = qOpt_pfc;
+    end
+    
+    %     % -------------------------------------
+    %     % For each area, extract latent factors
+    %     % -------------------------------------
+    %
+    %     [Z_pfc, U_pfc, Q_pfc] = ExtractFaLatents(X_pfc', qOpt_pfc);
+    %     [Z_hpc, U_hpc, Q_hpc] = ExtractFaLatents(X_hpc', qOpt_hpc);
 end
 %%
 
 %%%%%%%%%%%%%%%% CREATE TABLE AND SAVE RESULTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Prepare table!
-path2 = "C:\Users\BrainMaker\MATLAB Drive\Shared";
-cd(path2)
-if exist("Megatable.mat", 'file')
-    load("Megatable.mat");
+load("Megatable.mat");
+ winSizes = cell2mat(Option.winSize);
+if numel(Option.winSize{1} == 2) 
+    % otherwise, could not put a cell in a table, and cell2mat creates
+    % varying length of vectors which will be counted as 
+    Option.winSize = "pre: "+winSizes(1)+ " post: "+winSizes(2);
 else
-    TABLE = [];
+    Option.winSize =  " post: "+winSizes(1);
 end
 
-if exist("RealMegatable.mat", 'file')
-    load("RealMegatable.mat");
-else
-    RealMegatable = [];
-end
-
-Optiontable  = struct2table(Option, 'AsArray', true);
-Patterntable = query.getPatternTable(Patterns);
+Optiontable  = array2table(struct2array(Option));
+optionnames = fieldnames(Option)';
+Optiontable.Properties.VariableNames = optionnames;
+Patterntable = array2table( Patterns(:)');
 
 % Identifying information about this options set and date of run
 hash = DataHash(Option);
 hash = hash(1:7); % Take the first 7 letters of the hash
 hash = string(hash);
-timestamp = string(date());
-tablerow = [Optiontable, table(timestamp, hash)]; % Combine option columnns with hash and date
-tablecontent = [Patterntable, repmat(tablerow, height(Patterntable), 1)]; % combine those with all rows of the pattern table
+datestr   = cell(1,1);
+datestr{1} = date();
+Filetable = table(hash, datestr);
+
+tablerow = table(Optiontable, Filetable);
 
 %% Check and Hash
-if ~isempty('TABLE') && any(contains(TABLE.hash, hash))
-    TABLE(contains(TABLE.hash, hash), :) = []; % Delete any rows that contain the current hash
+if any(contains(TABLE.Filetable.hash, hash))
+    TABLE(contains(TABLE.Filetable.hash, hash), :) = tablerow;
     disp("already computed before, rehashing to the same location");
     % New options:    Append row
 else
     TABLE    = [TABLE; tablerow];
-    RealMegatble = [RealMegatable; tablecontent];
     disp("new results stored!")
 end
 
 %% Save
-% control.comparOptDim
 save ("Megatable", "TABLE",'-v7.3');
-save ("RealMegatable", "RealMegatable", '-v7.3');
-% writetable(TABLE,'~/Megatable.xls');
 save(fullfile(datadefine, "hash", hash), ...
-    "Patterns", "Option", "H", "cellOfWindows", "tablecontent",'-v7.3')
+    "Patterns", "Option", "H", "cellOfWindows", '-v7.3')
+%%
+% 2. Save table with all factor analysis outputs (we
+% still lack these)
+% 3. Implement factor analysis outputs
+% 4. Implement acquiring Figure 2 distributions from semedo paper
 

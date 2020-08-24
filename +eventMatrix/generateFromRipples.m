@@ -1,5 +1,4 @@
-function [times, H, Hnanlocs, Hvals] = generateFromRipples(rippleData, ...
-    samprate, varargin)
+function [times, H, Hnanlocs, Hvals, valThreshold, original] = generateFromRipples(rippleData, varargin)
 % Input
 % -----
 % rippleData : cell of structs
@@ -24,8 +23,10 @@ function [times, H, Hnanlocs, Hvals] = generateFromRipples(rippleData, ...
 
 ip = inputParser;
 ip.addParameter('amplitude_at_riptime', false, @islogical);
-ip.addParameter('ripple_to_replace',[]);
-ip.addParameter('original_time_axis',[]);
+ip.addParameter('rippleBand',[]);
+ip.addParameter('rippleBandTime',[]);
+ip.addParameter('globalrippleWindowUnits','std');
+ip.addParameter('samprate', 1500);
 ip.parse(varargin{:});
 opt = ip.Results;
 
@@ -51,13 +52,27 @@ for iEpoch = 1:numel(ripples)
 end
 
 %% Creat time axis and initialize output
-times = first_time_of_the_day:1/samprate:last_time_of_the_day;
-if ~isempty(opt.ripple_to_replace) && ~isempty(opt.original_time_axis)
-    H = interp1(opt.original_time_axis,opt.ripple_to_replace,times);
+conditions = [isempty(opt.rippleBand), ...
+              isempty(opt.rippleBandTime)];
+if all(conditions)
+    times = first_time_of_the_day:1/opt.samprate:last_time_of_the_day;
+    H = interp1(opt.rippleBandTime,opt.rippleBand,times);
     Hvals = H; % this would create NaNs in Hvals
+elseif any(conditions)
+    error('Must provide both  rippleBand and original_time_axs');
 else
-    H = nan(1,length(times));
-    Hvals = zeros(1,length(times));
+    times = opt.rippleBandTime;
+    H     = nan(1,length(times));
+    switch opt.globalrippleWindowUnits
+        case 'std'
+            % Need to trasform rippleBand
+            opt.rippleBand = (opt.rippleBand - mean(opt.rippleBand))./std(opt.rippleBand);
+        case 'amp'
+        otherwise
+            error("Unhandled ripple unit");
+    end
+    Hvals = opt.rippleBand;
+    original = true;
 end
 
 
@@ -66,29 +81,30 @@ for iEpoch = 1:numel(ripples)
     if ~isempty(ripples{iEpoch})
         curr = ripples{iEpoch};
         for iWindows = 1:length(curr)
-            ripple_windows = [ripple_windows;curr(iWindows,:)];
+            ripple_windows = [ripple_windows;...
+                              curr(iWindows,:)];
         end
     end
 end
+
+valThreshold = min(ripple_windows(:,3));
 
 %%  Mark each time in the axis
-for i = 1:length(times)
-    ripples_that_are_in_the_past = ripple_windows(:,2) < times(i);
-    % stop searching when the end time surpasses the time point interested in
-    ripple_windows(ripples_that_are_in_the_past,:) = [];
-    for j = 1:size(ripple_windows,1)
-        % first qualified window encountered
-        if times(i)>=ripple_windows(j,1) && times(i) < ripple_windows(j,2)
-            if opt.amplitude_at_riptime == false
-                H(i) = 1;
-            else
-                H(i) = ripple_windows(j,3);
-            end
-            break;
-        end
+for j = 1:size(ripple_windows,1)
+    % first qualified window encountered
+    filter = times >= ripple_windows(j,1) & times < ripple_windows(j,2);
+    if opt.amplitude_at_riptime == false
+        H(filter) = 1;
+    else
+        H(filter) = ripple_windows(j,3);
     end
+    continue;
 end
 
-Hnanlocs = isnan(H); % where all the ripple events don't occur
-Hvals(~Hnanlocs) = H(~Hnanlocs);
-end
+Hnanlocs = isnan(H);
+Hnanlocs = double(Hnanlocs)';
+Hnanlocs(Hnanlocs == 1) = nan;
+Hnanlocs(Hnanlocs == 0) = 1;
+Hvals(Hnanlocs==1) = H(Hnanlocs==1);
+
+H = Hvals .* Hnanlocs;
